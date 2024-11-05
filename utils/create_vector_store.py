@@ -13,7 +13,6 @@ import numpy as np
 from tqdm import tqdm
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import requests
-from llama_index.embeddings.instructor import InstructorEmbedding
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 

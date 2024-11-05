@@ -28,7 +28,7 @@ import re
 load_dotenv(find_dotenv(), override=True)
 
 
-@st.cache_resource
+@st.cache_resource(show_spinner=True)
 def init_constants():
 
     persist_dir = "./vector_index"

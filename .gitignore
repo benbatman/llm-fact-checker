@@ -1,6 +1,5 @@
 .env
 venv
-*.json
 *.npz
 /faiss_vector_index
 /links
