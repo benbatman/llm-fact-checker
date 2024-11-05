@@ -1,0 +1,10 @@
+.env
+venv
+*.json
+*.npz
+/vector_index
+/vector_index_v1
+/faiss_vector_index
+/links
+
+__pycache__

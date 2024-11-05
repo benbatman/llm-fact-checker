@@ -1,0 +1,26 @@
+models:
+  - type: main
+    engine: nim
+    model: meta/llama-3.1-70b-instruct
+    parameters:
+      api_key: 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
+      base_url: https://integrate.api.nvidia.com/v1
+
+rails:
+  input:
+    flows:
+      - self check input
+      - mask sensitive data on input
+  output:
+    flows:
+      - self check output
+      - mask sensitive data on output
+
+  config:
+    sensitive_data_detection:
+      input:
+        entities:
+          - EMAIL_ADDRESS
+          - PHONE_NUMBER
+          - CREDIT_CARD
+          - IP_ADDRESS

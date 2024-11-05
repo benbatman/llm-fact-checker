@@ -1,0 +1,73 @@
+
+define user ask question
+    "Is the source credible and reputable?" 
+    "Has this information been reported by multiple trustworthy outlets?"
+    "Can I verify this claim through official records or documents?" 
+    "Are there expert opinions or studies supporting this information?" 
+    "Is the data or statistic cited accurately and in context?" 
+    "Does the timeline of events make sense logically?" 
+    "Is this a recent event, or is old news being recirculated as new?" 
+    "Does the information seem exaggerated or sensationalized?" '
+    "Could this be satire or a parody mistaken for factual reporting?" 
+    "Are quotes attributed accurately and in the correct context?" 
+    "Did this really happen?"
+    "Did xyz do this?"
+    "What happened to xzy on abc date?"
+    "Did someone do xyz?"
+    
+
+define user ask fact check
+    "Can you check if xyz is true or not?"
+    "Can you fact check xyz please?"
+    "Are you able to check if xyz actually happened?"
+    "Can you verify xyz this actually happened"
+
+define bot inform answer unknown
+    "I'm sorry, my self fact check was triggered and I either couldn't find the information in database or through searching the web."
+
+define bot input refuse to respond
+    "Sorry, I cannot respond to you"
+
+define bot output refuse to respond
+    "Sorry, my output check was triggered."
+
+define bot general response
+    "It appears your question may not have been about fact checking or verifying a particular thing. My job is to fact check and verify!"
+
+define flow self check input
+    $allowed = execute self_check_input
+
+    if not $allowed
+        bot input refuse to respond
+        stop
+
+define flow self check output
+    $allowed = execute self_check_output
+    
+    if not $allowed 
+        bot output refuse to respond
+        stop
+
+define flow question
+    user ask question
+    $context = execute retrieve(query=$last_user_message)
+    $answer = execute generate(prompt=$last_user_message, context=$context)
+    $factual = execute check_facts_v1(context=$context, llm_answer=$answer, user_message=$last_user_message)
+    if not $factual
+        bot inform answer unknown
+    else
+        bot $answer
+
+define flow fact check
+    user ask fact check
+    $context = execute retrieve(query=$last_user_message)
+    $answer = execute generate(prompt=$last_user_message, context=$context)
+    $factual = execute check_facts_v1(context=$context, llm_answer=$answer, user_message=$last_user_message)
+    if not $factual
+        bot inform answer unknown
+    else
+        bot $answer
+    
+   
+
+
