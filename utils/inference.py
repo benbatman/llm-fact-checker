@@ -18,7 +18,7 @@ from serpapi import GoogleSearch
 
 from actions import check_facts_v1
 
-from PgClient import PgClient
+from utils.PgClient import PgClient
 
 load_dotenv(find_dotenv(), override=True)
 

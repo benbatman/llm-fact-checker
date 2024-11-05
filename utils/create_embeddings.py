@@ -1,5 +1,4 @@
 from sentence_transformers import SentenceTransformer
-from sentence_transformers.util import cos_sim
 from sentence_transformers.quantization import quantize_embeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import numpy as np

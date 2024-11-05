@@ -2,7 +2,6 @@ from PgClient import PgClient
 
 import os
 import json
-import re
 
 
 from dotenv import load_dotenv, find_dotenv
@@ -16,9 +15,6 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 import requests
 from llama_index.embeddings.instructor import InstructorEmbedding
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-
-# import faiss
-# from llama_index.vector_stores.faiss import FaissVectorStore
 
 
 load_dotenv(find_dotenv(), override=True)
@@ -63,7 +59,7 @@ if create_tables:
     print("Tables created")
 
 
-store_information = True
+store_information = False
 if store_information:
     store_pbs = True
     if store_pbs:
@@ -98,12 +94,13 @@ if store_information:
 
         if os.path.exists("pbs_calibration_embeddings.npz"):
             print("Loading calibration embeddings from file")
-            loaded_embeddings = np.load("pbs_calibration_embeddings.npz")
+            loaded_embeddings = np.load("utils/pbs_calibration_embeddings.npz")
             calibration_embeddings = loaded_embeddings["embeddings"]
         else:
             calibration_embeddings = mxbai_model.encode(corpus, show_progress_bar=True)
             np.savez(
-                "pbs_calibration_embeddings.npz", embeddings=calibration_embeddings
+                "utils/pbs_calibration_embeddings.npz",
+                embeddings=calibration_embeddings,
             )
 
         print("Preparing to embed pbs data")
@@ -288,10 +285,11 @@ if store_information:
 
         pg_client.insert_data(table_name="snopes", data=data_to_insert)
 
-create_vector_store = True
+
+CREATE_VECTOR_STORE = True
 pbs_documents = []
 snopes_documents = []
-if create_vector_store:
+if CREATE_VECTOR_STORE:
     # dim = 512
     # faiss_index = faiss.IndexFlatL2(dim)
     print("Creating vector store")
@@ -354,5 +352,5 @@ if create_vector_store:
     print("Using standard index")
     pbs_index = VectorStoreIndex.from_documents(documents, embed_model=embed_model)
     pbs_index.storage_context.persist(
-        persist_dir="./vector_index_v1",
+        persist_dir="./vector_index_v2",
     )

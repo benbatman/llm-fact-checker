@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 import requests
 from tqdm.asyncio import tqdm_asyncio
 
-from utils import get_sub_videos
+from utils.utils import get_sub_videos
 
 
 async def fetch_sitemap(session: aiohttp.ClientSession, url):
@@ -76,30 +76,25 @@ async def get_url_content(url):
     """
     Take in url and return the parsed content
     """
-    timeout = aiohttp.ClientTimeout(total=30)
-
-    async with aiohttp.ClientSession(timeout=timeout) as session:
+    async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             if response.status != 200:
                 print(f"Error fetching {url}: {response.status}")
                 return None
 
+            response = await session.get(url)
             url_contents = await response.text()
             soup = BeautifulSoup(url_contents, "html.parser")
             # article is in div == post__col-right
             # title is in h1, post__title
             # timestamp is in time, post__date
             # Text is in <article> --> <div class='body-text> in <p> tags
-            title = soup.find("h1", class_="post__title")
-            if title:
-                title = title.text.strip()
+            title = soup.find("h1", class_="post__title").text.strip()
             has_transcript = soup.find("ul", class_="video-transcript")
 
             # Get article content
             if title:
-                timestamp = soup.find("time", class_="post__date")
-                if timestamp:
-                    timestamp = timestamp.text.strip()
+                timestamp = soup.find("time", class_="post__date").text.strip()
                 text = soup.find("div", class_="body-text")
                 # Possiblity this url has a video and no transcript, check if text variable has video tag
                 if text.find("video"):
@@ -107,9 +102,8 @@ async def get_url_content(url):
                     pass
 
                 body_text = ""
-                if text:
-                    for p in text.find_all("p"):
-                        body_text += p.text.strip() + "\n"
+                for p in text.find_all("p"):
+                    body_text += p.text.strip() + "\n"
 
                 article_content = {
                     "title": title,
@@ -121,12 +115,8 @@ async def get_url_content(url):
 
             # Get transcript
             elif has_transcript:
-                title = soup.find("h1", class_="video-single__title")
-                if title:
-                    title = title.text.strip()
-                post_date = soup.find("time", class_="video-single__date")
-                if post_date:
-                    post_date = post_date.text.strip()
+                title = soup.find("h1", class_="video-single-title").text.strip()
+                post_date = soup.find("time", class_="video-single-date").text.strip()
                 # Get all p tags in transcript
                 transcript = ""
                 for p in has_transcript.find_all("p"):
@@ -212,61 +202,26 @@ def scrape_all_sitemaps(url):
     return asyncio.run(scrape_sitemap_index(url))
 
 
-semaphore = asyncio.Semaphore(3)
+semaphore = asyncio.Semaphore(5)
 
 
 async def main():
     main_sitemap_url = "https://www.pbs.org/newshour/sitemaps/sitemap.xml"
-    if os.path.exists("uncompleted_links.txt"):
-        with open("uncompleted_links.txt", "r") as f:
-            pbs_links = f.read().splitlines()
-    elif os.path.exists("all_links_final.txt"):
+    if os.path.exists("all_links_final.txt"):
         with open("all_links_final.txt", "r") as f:
-            pbs_links = f.read().splitlines()
+            all_links = f.read().splitlines()
     else:
-        pbs_links = scrape_all_sitemaps(main_sitemap_url)
+        all_links = scrape_all_sitemaps(main_sitemap_url)
 
-    print("total links found: ", len(pbs_links))
+    print("total links found: ", len(all_links))
 
-    scrape_pbs_urls = True
-    print("Scraping PBS urls...")
+    # Get all content from these urls using asyncio
+    scrape_pbs_urls = False
     if scrape_pbs_urls:
-
-        async def limited_get_url_content(url, timeout_urls: list):
-            async with semaphore:
-                try:
-                    return await get_url_content(url)
-                except asyncio.TimeoutError:
-                    print(f"Timeout error for URL: {url}")
-                    timeout_urls.append(url)
-                    return None
-                except Exception as e:
-                    print(f"Error fetching {url}: {e}")
-                    timeout_urls.append(url)
-                    return None
-
-        batch_size = 10
-        sleep_duration = 10
-        results = []
-        timeout_urls = []
-        print("Processing URLs...")
-        for i in tqdm_asyncio(range(0, len(pbs_links), batch_size)):
-            batch = pbs_links[i : i + batch_size]
-
-            tasks = [limited_get_url_content(url, timeout_urls) for url in batch]
-
-            batch_results = await asyncio.gather(*tasks)
-
-            results.extend(batch_results)
-
-            print(
-                f"Processed {i + batch_size} URLs, sleeping for {sleep_duration} seconds..."
-            )
-            if i % 50 == 0 and i != 0:
-                with open("extra_pbs_results.json", "w") as f:
-                    json.dump(results, f, indent=4)
-
-        return timeout_urls
+        url_subset = all_links[:10]
+        tasks = [get_url_content(url) for url in url_subset]
+        results = await asyncio.gather(*tasks)
+        print(results)
 
     get_snopes_urls = False
     if get_snopes_urls:
@@ -278,7 +233,8 @@ async def main():
             for link in snopes_links:
                 f.write(link + "\n")
 
-    scrape_snopes_urls = False
+    scrape_snopes_urls = True
+
     if scrape_snopes_urls:
         with open("snopes_links_1.txt", "r") as f:
             snopes_links = f.read().splitlines()
@@ -286,7 +242,14 @@ async def main():
         # Read in json
         with open("snopes_results_0.json", "r") as f:
             results = json.load(f)
-            print("Number of results rounded: ", round(len(results) / 50) * 50)
+
+        with open("snopes_results_1.json", "r") as f:
+            other_results = json.load(f)
+
+        # combine results
+        results.extend(other_results)
+
+        print("Number of results rounded: ", round(len(results) / 50) * 50)
         # Just use half of the links
         snopes_links = snopes_links[round(len(results) / 50) * 50 : len(snopes_links)]
 
@@ -299,7 +262,7 @@ async def main():
                     timeout_urls.append(url)
                     return None
 
-        batch_size = 10
+        batch_size = 5
         sleep_duration = 5
         results = []
         timeout_urls = []
@@ -329,7 +292,7 @@ async def main():
                 #     [result for result in results if result is not None]
                 # )
 
-                with open("snopes_results_1.json", "w") as f:
+                with open("snopes_results_2.json", "w") as f:
                     json.dump(results, f, indent=4)
 
             await asyncio.sleep(sleep_duration)
@@ -340,6 +303,6 @@ async def main():
 if __name__ == "__main__":
     timeout_urls = asyncio.run(main())
     # Write to txt file
-    with open("timeout_urls_pbs.txt", "w") as f:
+    with open("timeout_urls.txt", "w") as f:
         for url in timeout_urls:
             f.write(url + "\n")

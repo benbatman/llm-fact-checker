@@ -20,9 +20,7 @@ from serpapi import GoogleSearch
 from actions import check_facts_v1
 
 
-# import faiss
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-import functools
 import json
 import re
 
