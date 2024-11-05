@@ -3,7 +3,6 @@ models:
     engine: nim
     model: meta/llama-3.1-70b-instruct
     parameters:
-      api_key: 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
       base_url: https://integrate.api.nvidia.com/v1
 
 rails:
