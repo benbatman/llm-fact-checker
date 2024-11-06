@@ -2,6 +2,9 @@
 
 **How to Run**
 
+1. Create and activate a virtual environment
+   - Run `python3 -m venv venv`
+   - Follow this to activate on your specific environment: https://docs.python.org/3/library/venv.html#how-venvs-work
 1. Run `pip install -r requirements.txt`
 2. Create `.env` file with following api keys:
    - `NGC_API_KEY`=`your-ngc-api-key`
