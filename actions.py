@@ -24,7 +24,7 @@ async def check_facts_v1(context: str, llm_answer: str, user_message: str) -> bo
     It returns True if they are the same, and False otherwise.
     """
     print("> CHECKING FACTS")
-    print("LLM ANSWER: ", llm_answer)
+    # print("LLM ANSWER: ", llm_answer)
     search_results = ""
     if "SEARCH RESULTS" in llm_answer:
         search_results = llm_answer.split("SEARCH RESULTS:")[-1]

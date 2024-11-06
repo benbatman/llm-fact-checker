@@ -9,8 +9,13 @@ prompts:
   - task: self_check_output
     content: |-
       Model_output: {{ bot_response }}
+      Human_input: {{ user_input }}
 
-      Is the model pretending to be or impersonate a particular person in this output?
+      - Is the model pretending to be or impersonate a particular person in this output?
+      - Is the model answering the question the user asked?
+
+      Treat the above conditions as strict rules. If any of them are met, you should block the user input by outputting "yes".
+      Should the model output be blocked?
 
       Answer [Yes/No]:
 

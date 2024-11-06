@@ -18,12 +18,12 @@ nest_asyncio==1.6.0
 langchain==0.2.16
 langchain-core==0.2.39
 langchain-nvidia-ai-endpoints==0.2.2
-presidio_analyzer==2.2.355
 torch==2.4.1
 numpy==1.26.4
 langchain==0.2.16
 scipy==1.14.1
 scikit-learn==1.5.2
+
 
 
 

@@ -15,7 +15,7 @@ from llama_index.core.vector_stores import SimpleVectorStore
 # from llama_index.vector_stores.faiss import FaissVectorStore
 from llama_index.core.storage.index_store import SimpleIndexStore
 from openai import OpenAI
-from serpapi import GoogleSearch
+from serpapi import GoogleSearch, GoogleScholarSearch
 
 from actions import check_facts_v1
 
@@ -83,10 +83,6 @@ async def retrieve(query: str, top_k: int = 3) -> str:
     return (texts[0], all_metadata[0], texts[1], all_metadata[1])
 
 
-def format_context():
-    pass
-
-
 def generate_system_prompt(context: tuple) -> str:
     SYSTEM_PROMPT = f"""You are a fact checking bot. Your job is to take in the user query, question or statement and use the supplied context to the verify if the statement is true or not.
 
@@ -116,9 +112,9 @@ def generate_system_prompt(context: tuple) -> str:
                     {context[2]}
                     {context[3]}
                         
-                    If the context or metadata does not contain a factual answer to the user's question you must call the web_search tool to find additional information on the user's query.
-                    When providing the final answer, use the information obtained from the web search tool if you called it.
-                    If the web search result information doesn't answer the question, just say "I don't know".
+                    If the context or metadata does not contain a factual answer to the user's question you may call the web_search tool to find additional information on the user's query.
+                    When providing the final answer, use the information obtained from the context information and web search tool if you called it.
+                    If the web search result information doesn't answer the question, just say "I couldn't find a definitive answer".
 
                      If you are able to answer the question based off of the given context and metadata or after using the web_search tool, your response should be in the following valid JSON format.
                      Only include the valid JSON object in your response.
@@ -138,7 +134,7 @@ async def generate(prompt: str, context: dict) -> str:
     print("> GENERATE CALLED")
     # print("CONTEXT: ", context)
     refined_context: tuple = context["context"]
-    # print("Refined context: ", refined_context)
+    print("Refined context: ", refined_context)
     system_prompt = generate_system_prompt(refined_context)
     messages = [
         {"role": "system", "content": system_prompt},
@@ -211,7 +207,8 @@ async def generate(prompt: str, context: dict) -> str:
                                 Here are the relevant search results you can use to answer the question: {search_results}. 
                                 If you can answer the question with the information from the search results, give a definitive answer.
                                 Be sure to check the dates of the search results to see if they are relevant to the question.
-                                Be succinct in your answer but make sure to answer the question""",
+                                Use the most up to date information from the context information and search results to answer the question.
+                                Be succinct in your answer but make sure to answer the question. Put all links found in the search results in your final answer.""",
                 }
             )
 
@@ -221,7 +218,7 @@ async def generate(prompt: str, context: dict) -> str:
                 messages=messages,
                 temperature=0.1,
                 top_p=0.7,
-                max_tokens=1024,
+                max_tokens=2000,
             )
 
             return (
@@ -233,7 +230,7 @@ async def generate(prompt: str, context: dict) -> str:
     return completion.choices[0].message.content
 
 
-async def web_search(query: str) -> list[dict]:
+async def web_search(query: str, num_links: int = 7) -> list[dict]:
     print("> WEB SEARCH CALLED")
     serp_api_key = os.environ.get("SERP_API_KEY")
     if not serp_api_key:
@@ -243,18 +240,30 @@ async def web_search(query: str) -> list[dict]:
         {
             "q": query,
             "api_key": serp_api_key,
-            "num": 6,
+            "num": num_links,
+        }
+    )
+
+    google_scholar_search = GoogleScholarSearch(
+        {
+            "q": query,
+            "api_key": serp_api_key,
+            "num": num_links,
         }
     )
 
     try:
         serp_results = search.get_dict()
+        google_scholar_results = google_scholar_search.get_dict()
+        serp_results = serp_results.get("organic_results", [])
+        google_scholar_results = google_scholar_results.get("organic_results", [])
+        serp_results.extend(google_scholar_results)
     except Exception as e:
         print(f"Error: {e}")
         return "No web search results found."
 
     snippets = []
-    for result in serp_results.get("organic_results", []):
+    for result in serp_results:
         snippet = result.get("snippet", "")
         link = result.get("link", "")
         source = result.get("source", "")

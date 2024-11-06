@@ -20,7 +20,8 @@ define user ask fact check
     "Can you check if xyz is true or not?"
     "Can you fact check xyz please?"
     "Are you able to check if xyz actually happened?"
-    "Can you verify xyz this actually happened"
+    "Can you verify xyz actually happened?"
+    "Does xzy cause "
 
 define bot inform answer unknown
     "I'm sorry, my self fact check was triggered and I either couldn't find the information in database or through searching the web."
