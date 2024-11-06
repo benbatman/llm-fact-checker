@@ -2,6 +2,7 @@ import streamlit as st
 import asyncio
 import nest_asyncio
 from datetime import date, datetime
+from time import time
 
 nest_asyncio.apply()
 import os
@@ -69,7 +70,7 @@ def init_constants():
 client, index, rails = init_constants()
 
 
-async def retrieve(query: str, top_k: int = 3) -> str:
+async def retrieve(query: str, top_k: int = 2) -> str:
     print("> RAG CALLED")
     retriever = index.as_retriever(top_k=top_k)
     response = retriever.retrieve(query)
@@ -134,7 +135,6 @@ async def generate(prompt: str, context: dict) -> str:
     print("> GENERATE CALLED")
     # print("CONTEXT: ", context)
     refined_context: tuple = context["context"]
-    print("Refined context: ", refined_context)
     system_prompt = generate_system_prompt(refined_context)
     messages = [
         {"role": "system", "content": system_prompt},
@@ -208,17 +208,19 @@ async def generate(prompt: str, context: dict) -> str:
                                 If you can answer the question with the information from the search results, give a definitive answer.
                                 Be sure to check the dates of the search results to see if they are relevant to the question.
                                 Use the most up to date information from the context information and search results to answer the question.
-                                Be succinct in your answer but make sure to answer the question. Put all links found in the search results in your final answer.""",
+                                Be succinct in your answer but make sure to answer the question. Choose the top 3 links/sources for your final answer.
+                                """,
                 }
             )
 
             # Generate a new response including the function result
+            print("> GENERATING SECOND RESPONSE")
             second_completion = client.chat.completions.create(
                 model="meta/llama-3.1-70b-instruct",
                 messages=messages,
                 temperature=0.1,
                 top_p=0.7,
-                max_tokens=2000,
+                max_tokens=1024,
             )
 
             return (
@@ -230,33 +232,30 @@ async def generate(prompt: str, context: dict) -> str:
     return completion.choices[0].message.content
 
 
-async def web_search(query: str, num_links: int = 7) -> list[dict]:
+async def web_search(
+    query: str, num_links: int = 7, use_google_scholar=False
+) -> list[dict]:
     print("> WEB SEARCH CALLED")
     serp_api_key = os.environ.get("SERP_API_KEY")
     if not serp_api_key:
         raise ValueError("SERP_API_KEY environment variable is not set.")
 
-    search = GoogleSearch(
-        {
-            "q": query,
-            "api_key": serp_api_key,
-            "num": num_links,
-        }
-    )
-
-    google_scholar_search = GoogleScholarSearch(
-        {
-            "q": query,
-            "api_key": serp_api_key,
-            "num": num_links,
-        }
-    )
+    search = GoogleSearch({"q": query, "api_key": serp_api_key, "num": num_links})
+    google_scholar_results = []
+    if use_google_scholar:
+        google_scholar_search = GoogleScholarSearch(
+            {
+                "q": query,
+                "api_key": serp_api_key,
+                "num": 2,
+            }
+        )
+        google_scholar_results = google_scholar_search.get_dict()
+        google_scholar_results = google_scholar_results.get("organic_results", [])
 
     try:
         serp_results = search.get_dict()
-        google_scholar_results = google_scholar_search.get_dict()
         serp_results = serp_results.get("organic_results", [])
-        google_scholar_results = google_scholar_results.get("organic_results", [])
         serp_results.extend(google_scholar_results)
     except Exception as e:
         print(f"Error: {e}")
@@ -280,7 +279,6 @@ async def web_search(query: str, num_links: int = 7) -> list[dict]:
 
     if snippets:
         print("> SNIPPETS FOUND IN SEARCH RESULTS")
-        # print("SNIPPETS: ", snippets)
         return snippets
 
     else:
@@ -295,10 +293,6 @@ rails.register_action(action=check_facts_v1, name="check_facts_v1")
 
 def get_response(prompt, messages=None):
     return asyncio.run(rails.generate_async(prompt, messages))
-
-
-def update_message(message_placeholder, message: str):
-    message_placeholder.text(message)
 
 
 def main() -> None:

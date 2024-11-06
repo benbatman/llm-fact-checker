@@ -20,7 +20,7 @@ def perform_fact_check(prompt: str):
         }
     ]
     completion = client.chat.completions.create(
-        model="meta/llama-3.1-70b-instruct",
+        model="meta/llama-3.1-8b-instruct",
         messages=messages,
         temperature=0.1,
         top_p=0.7,
