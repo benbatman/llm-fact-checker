@@ -1,4 +1,4 @@
-## A project NVIDIA's and LlamaIndex's Developer Competition
+## A project for NVIDIA's and LlamaIndex's Developer Competition
 
 **How to Run**
 
